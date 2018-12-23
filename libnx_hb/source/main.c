@@ -3,7 +3,8 @@
 #include <stdlib.h>
 
 #include <switch.h>
-#include "web.h"
+#include "web_online.h"
+#include "web_wifi.h"
 
 #define PRINT_RC(str, rc) printf("[!] %s: [0x%x] %04d-%04d\n", str, rc, R_MODULE(rc), R_DESCRIPTION(rc))
 #define START_URL "http://google.fr"
@@ -19,91 +20,57 @@ void userAppExit() {
 	socketExit();
 }
 
-void job() {
-	AppletHolder appletHolder = {0};
+void showKeyboard() {
+	printf("* showKeyboard\n");
 	Result rc = 0;
+	SwkbdConfig config;
+	swkbdCreate(&config, 0);
+	char resultStr[500] = {0};
+	rc = swkbdShow(&config, resultStr, sizeof(resultStr));
+	PRINT_RC("swkbdShow", rc);
 	
-	rc = appletCreateLibraryApplet(&appletHolder, AppletId_web, LibAppletMode_AllForeground);
-	PRINT_RC("appletCreateLibraryApplet", rc);
-	if(R_FAILED(rc)) {
-		return;
-	}
-	
-	AppletStorage commonArgsStorage = {0};
-	rc = appletCreateStorage(&commonArgsStorage, 0x20);
-	PRINT_RC("appletCreateStorage[commonArgsStorage]", rc);
-	if(R_FAILED(rc)) {
-		return;
-	}
-	
-	u32 commonArgsHeader[] = {0x1, 0x2000}; // {version?, size?}
-	rc = appletStorageWrite(&commonArgsStorage, 0, commonArgsHeader, sizeof(commonArgsHeader));
-	PRINT_RC("appletStorageWrite[commonArgsHeader]", rc);
-	if(R_FAILED(rc)) {
-		return;
-	}
-	
-	struct {
-		u32 unknown1;
-		u32 theme_color;
-		u8 unknown2;
-		u64 system_tick;
-	} commonArgsData = {0};
-	static_assert(sizeof(commonArgsData) == 0x18, "invalid common args data");
-	
-	commonArgsData.unknown1 = 0x30000;
-	commonArgsData.theme_color = 0;
-	commonArgsData.unknown2 = 0;
-	commonArgsData.system_tick = svcGetSystemTick();
-	
-	rc = appletStorageWrite(&commonArgsStorage, sizeof(commonArgsHeader), &commonArgsData, sizeof(commonArgsData));
-	PRINT_RC("appletStorageWrite[commonArgsStorage]", rc);
-	if(R_FAILED(rc)) {
-		return;
-	}
-	
-	rc = appletHolderPushInData(&appletHolder, &commonArgsStorage);
-	PRINT_RC("appletHolderPushInData[commonArgsStorage]", rc);
-	if(R_FAILED(rc)) {
-		return;
-	}
-	
-	webpage_arg_t webpageConfig = {0};
-	WebPageArg(&webpageConfig, START_URL);
-	
-	AppletStorage configStorage = {0};
-	rc = appletCreateStorage(&configStorage, 0x2000);
-	PRINT_RC("appletCreateStorage[configStorage]", rc);
-	if(R_FAILED(rc)) {
-		return;
-	}
-	
-	static_assert(sizeof(webpageConfig) == 0x2000, "invalid webpage_arg size");
-	rc = appletStorageWrite(&configStorage, 0, &webpageConfig, sizeof(webpageConfig));
-	PRINT_RC("appletStorageWrite[webpageConfig]", rc);
-	
-	if(R_FAILED(rc)) {
-		return;
-	}
-	
-	rc = appletHolderPushInData(&appletHolder, &configStorage);
-	PRINT_RC("appletHolderPushInData[configStorage]", rc);
-	if(R_FAILED(rc)) {
-		return;
-	}
-	
-	rc = appletHolderStart(&appletHolder);
-	PRINT_RC("appletHolderStart", rc);
-	if(R_FAILED(rc)) {
-		return;
+	if(R_SUCCEEDED(rc)) {
+		printf("-> %s\n", resultStr);
 	}
 }
 
+void showWebOnline() {
+	printf("* showWebOnline\n");
+	Result rc = 0;
+	WebOnlineConfig config;
+	printf("sizeof(config): %lx\n", sizeof(config));
+	printf("sizeof(config.arg): %lx\n", sizeof(config.arg));
+	printf("sizeof(config.workbuf): %lx\n", sizeof(config.workbuf));
+	
+	rc = webOnlineCreate(&config, START_URL);
+	PRINT_RC("webOnlineCreate", rc);
+	rc = webOnlineShow(&config);
+	PRINT_RC("webOnlineShow", rc);
+}
+
+
+void showWebWifi() {
+	printf("* showWebWifi\n");
+	Result rc = 0;
+	WebWifiConfig config;
+	printf("sizeof(config): %lx\n", sizeof(config));
+	printf("sizeof(config.arg): %lx\n", sizeof(config.arg));
+	
+	webWifiCreate(&config, START_URL);
+	rc = webWifiShow(&config);
+	PRINT_RC("webWifiShow", rc);
+}
 
 int main(int argc, char *argv[]) {
-	printf("START\n======\n");
-	job();
-	printf("\n======\nPress + to exit\n");
+	printf(
+		"START\n"
+		"======\n"
+		"Press X to show keyboard\n"
+		"Press Y to show a webpage using web\n"
+		"Press B to show a webpage using wifiwebauth\n"
+		"======\n"
+		"Press + to exit\n"
+	);
 
 	while (appletMainLoop()) {
 		hidScanInput();
@@ -112,6 +79,18 @@ int main(int argc, char *argv[]) {
 		
 		if (kDown & KEY_PLUS) {
 			break;
+		}
+		
+		if (kDown & KEY_X) {
+			showKeyboard();
+		}
+
+		if (kDown & KEY_Y) {
+			showWebOnline();
+		}
+
+		if (kDown & KEY_B) {
+			showWebWifi();
 		}
 		
 		consoleUpdate(NULL);
