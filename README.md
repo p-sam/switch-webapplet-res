@@ -1,5 +1,7 @@
 # Exefs patches
 
+## DEPRECATED: latest libnx and Atmosphère commits allow support to call pretty much all webapplet, and load your own whitelists.
+
 Patches are meant to be used with [Atmosphère](https://github.com/Atmosphere-NX/Atmosphere) loader.
 Simply copy the relevant folder into `/atmosphere/exefs_patches`
 
